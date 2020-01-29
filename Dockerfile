@@ -38,8 +38,8 @@ RUN mkdir -p /snap/bin && \
     echo 'exec "$SNAP/usr/bin/python3" "$SNAP/bin/snapcraft" "$@"' >> /snap/bin/snapcraft && \
     chmod +x /snap/bin/snapcraft
 
-
-FROM node:10.18-stretch
+# We need to use buster or bionic instead of stretch because of https://forum.snapcraft.io/t/undefined-symbol-g-date-copy-problem/12235
+FROM rajivshah/node-ubuntu:10.18-bionic
 
 VOLUME /dist
 
@@ -63,14 +63,14 @@ RUN apt-get update && apt-get dist-upgrade -y && \
 
 # Build and install OpenSSL 1.0.2k
 # Based on https://github.com/realm/realm-js/blob/master/Dockerfile
-#RUN curl -SL https://www.openssl.org/source/openssl-1.0.2k.tar.gz | tar -zxC / && \
-#    cd openssl-1.0.2k && \
-#    ./Configure -DPIC -fPIC -fvisibility=hidden -fvisibility-inlines-hidden \
-#    no-zlib-dynamic no-dso linux-x86_64 --prefix=/usr && make && make install_sw && \
-#    cd .. && rm -rf openssl-1.0.2k.tar.gz
+RUN curl -SL https://www.openssl.org/source/openssl-1.0.2k.tar.gz | tar -zxC / && \
+    cd openssl-1.0.2k && \
+    ./Configure -DPIC -fPIC -fvisibility=hidden -fvisibility-inlines-hidden \
+    no-zlib-dynamic no-dso linux-x86_64 --prefix=/usr && make && make install_sw && \
+    cd .. && rm -rf openssl-1.0.2k.tar.gz
 
 # Use our version of OpenSSL instead of the Debian-provided one
-#ENV PATH "/usr/local/ssl:$PATH"
+ENV PATH "/usr/local/ssl:$PATH"
 
 # Generate locale
 # https://github.com/tianon/docker-brew-debian/issues/45#issuecomment-325235517
@@ -89,3 +89,7 @@ ENV SNAP_NAME="snapcraft"
 ENV SNAP_ARCH="amd64"
 
 WORKDIR /app
+
+RUN git clone https://github.com/iotaledger/trinity-wallet -b chore/desktop-dependencies --depth 1 && cd trinity-wallet && yarn && yarn deps:shared
+RUN cd trinity-wallet/src/desktop && npm i && npm run build
+ENV DEBUG="electron-builder"
